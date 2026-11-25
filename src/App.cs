@@ -15,6 +15,7 @@ namespace BlackScreenLock
 
         private readonly Config _config;
         private readonly MessageWindow _messageWindow;
+        private readonly LockOverlayForm _overlay;
         private readonly LockController _lock;
         private NotifyIcon _tray;
         private ContextMenuStrip _menu;
@@ -49,9 +50,11 @@ namespace BlackScreenLock
             _messageWindow.LockedKeyDown += OnLockedKeyDown;
             _messageWindow.DisplayTurnedOn += OnDisplayTurnedOn;
             _messageWindow.ForceUnlockRequested += OnForceUnlockRequested;
+            _messageWindow.PhysicalMouseActivity += OnPhysicalMouseActivity;
             _messageWindow.RegisterPowerNotification();
 
-            _lock = new LockController(_config, _messageWindow.Handle);
+            _overlay = new LockOverlayForm();
+            _lock = new LockController(_config, _messageWindow.Handle, _overlay);
             _lock.Unlocked += OnUnlocked;
             _lock.UnlockFailed += OnUnlockFailed;
 
@@ -188,8 +191,7 @@ namespace BlackScreenLock
             if (_lock == null || _lock.IsLocked) return;
             try
             {
-                ToastForm.ShowToast("正在锁定屏幕", "屏幕即将关闭。解锁方式：直接盲打密码后按回车。", 1500);
-                _lock.Lock(1500); // 留出 1.5 秒让提示可见，然后关闭显示器
+                _lock.Lock(0);
             }
             catch (Exception ex)
             {
@@ -207,11 +209,16 @@ namespace BlackScreenLock
             if (_lock != null) _lock.ProcessKey(key, shift);
         }
 
+        private void OnPhysicalMouseActivity()
+        {
+            if (_lock != null) _lock.ProcessMouseActivity();
+        }
+
         private void OnDisplayTurnedOn()
         {
-            // 锁屏期间显示器被意外点亮 -> 立即熄灭
-            if (_lock != null && _lock.IsLocked)
-                DisplayControl.MonitorOff();
+            if (_lock == null || !_lock.IsLocked) return;
+            // 不再依赖关屏来“黑”，显示器状态变化时只需补设一次截图排除
+            if (_overlay != null) _overlay.ApplyCaptureExclusion();
         }
 
         private void OnUnlocked()
@@ -311,11 +318,12 @@ namespace BlackScreenLock
                 "黑屏锁 v1.0\r\n\r\n" +
                 "【锁定】按 " + KeyMapper.HotkeyText(_config.HotKeyModifiers, _config.HotKeyVk) + "（可在右键菜单修改）\r\n" +
                 "　　　屏幕立刻黑屏，物理键鼠被临时屏蔽，Windows 会话保持解锁状态。\r\n\r\n" +
-                "【解锁】直接盲打密码，按回车。密码正确后屏幕点亮。\r\n" +
-                "　　　按 Esc 清空已输入的内容；输错会播放提示音（可在选项中关闭）。\r\n\r\n" +
-                "【为什么不影响自动化】锁屏只关闭显示器背光（DPMS），桌面会话与窗口渲染完全没变：\r\n" +
-                "　　　· UI Automation 元素树、Pattern 调用完全可用；\r\n" +
-                "　　　· 截屏（BitBlt / PrintWindow / 图形捕获）仍能取到正常画面；\r\n" +
+                "【解锁】动一下鼠标或按任意键，屏幕点亮并显示半透明密码框；输入密码后按回车，或点“解锁”。\r\n" +
+                "　　　按 Esc 清空；点“重新黑屏”立刻回到全黑；15 秒无操作会自动回到全黑。\r\n" +
+                "　　　密码只显示圆点；输错会播放提示音（可在选项中关闭）。\r\n\r\n" +
+                "【为什么不影响自动化】遮罩层对截图不可见，且永不抢焦点：\r\n" +
+                "　　　· UI Automation 元素树、Pattern 调用完全可用（会话与窗口渲染未变）；\r\n" +
+                "　　　· 截屏仍能取到真实桌面画面（遮罩设置了“从截屏中排除”）；\r\n" +
                 "　　　· 程序注入的键鼠（SendInput）不会被拦截，只有物理键鼠会被拦截。\r\n\r\n" +
                 "【注意】Ctrl + Alt + Del 属于系统安全序列，任何程序都拦不住，\r\n" +
                 "　　　按下会点亮屏幕并进入安全桌面。\r\n\r\n" +
@@ -366,6 +374,10 @@ namespace BlackScreenLock
             if (_lock != null)
             {
                 _lock.Dispose();
+            }
+            if (_overlay != null)
+            {
+                _overlay.Dispose();
             }
 
             Log.Write("程序退出");

@@ -13,11 +13,11 @@ namespace BlackScreenLock
         private readonly Config _config;
         private CheckBox _autoStart;
         private CheckBox _sound;
-        private CheckBox _keepDark;
 
         public bool AutoStartEnabled { get { return _autoStart.Checked; } }
         public bool SoundOnError { get { return _sound.Checked; } }
-        public bool KeepDisplayOff { get { return _keepDark.Checked; } }
+        /// <summary>锁屏已改为纯黑遮罩代替关屏，不再提供“强制保持黑屏”开关。</summary>
+        public bool KeepDisplayOff { get { return false; } }
 
         public OptionsDialog(Config config, bool autoStartEnabled)
         {
@@ -64,21 +64,14 @@ namespace BlackScreenLock
             _sound.Checked = _config != null && _config.SoundOnError;
             Controls.Add(_sound);
 
-            _keepDark = new CheckBox();
-            _keepDark.Text = "锁定期间强制保持黑屏（每秒校验一次）";
-            _keepDark.Location = new Point(18, 116);
-            _keepDark.Size = new Size(384, 24);
-            _keepDark.Font = uiFont;
-            _keepDark.Checked = _config != null && _config.KeepDisplayOff;
-            Controls.Add(_keepDark);
-
-            Label keepTip = new Label();
-            keepTip.Location = new Point(38, 142);
-            keepTip.Size = new Size(360, 34);
-            keepTip.Font = tipFont;
-            keepTip.ForeColor = Color.FromArgb(120, 120, 130);
-            keepTip.Text = "若显示器被其他程序或系统策略意外点亮，会立即重新熄灭。\r\n关闭此项则只在锁定时关闭一次。";
-            Controls.Add(keepTip);
+            Label keepNote = new Label();
+            keepNote.Location = new Point(18, 114);
+            keepNote.Size = new Size(384, 54);
+            keepNote.Font = tipFont;
+            keepNote.ForeColor = Color.FromArgb(120, 120, 130);
+            keepNote.Text = "锁屏用全屏纯黑遮罩代替关闭显示器：唤醒时画面瞬间出现、不闪屏，\r\n" +
+                            "任何截屏里也看不到遮罩。显示器背光保持点亮，视觉上仍是黑屏。";
+            Controls.Add(keepNote);
 
             Label pathLabel = new Label();
             pathLabel.Text = "配置文件位置";

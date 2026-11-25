@@ -18,9 +18,19 @@ namespace BlackScreenLock
         private IntPtr _keyboardHook = IntPtr.Zero;
         private IntPtr _mouseHook = IntPtr.Zero;
         private bool _shiftDown;
+        private int _lastMouseNotifyTick;
 
         /// <summary>物理按键按下（虚拟键, Shift 是否按下）。</summary>
         public event Action<Keys, bool> PhysicalKeyDown;
+
+        /// <summary>物理鼠标活动（移动/按下/滚轮），已节流到 150ms 一次。</summary>
+        public event Action PhysicalMouseActivity;
+
+        /// <summary>true 时吞掉物理鼠标；显示密码提示界面需要点按钮时置为 false。</summary>
+        public bool SuppressMouse = true;
+
+        /// <summary>最近一次物理键鼠活动的时间戳（Environment.TickCount）。</summary>
+        public int LastActivityTick;
 
         public bool IsInstalled { get { return _keyboardHook != IntPtr.Zero; } }
 
@@ -94,6 +104,8 @@ namespace BlackScreenLock
                 int msg = wParam.ToInt32();
                 bool isDown = msg == NativeMethods.WM_KEYDOWN || msg == NativeMethods.WM_SYSKEYDOWN;
 
+                LastActivityTick = Environment.TickCount;
+
                 if (data.vkCode == NativeMethods.VK_LSHIFT || data.vkCode == NativeMethods.VK_RSHIFT)
                 {
                     _shiftDown = isDown;
@@ -122,9 +134,23 @@ namespace BlackScreenLock
             {
                 NativeMethods.MSLLHOOKSTRUCT data =
                     (NativeMethods.MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(NativeMethods.MSLLHOOKSTRUCT));
+
+                // 注入的鼠标（自动化 SendInput）永远放行，保证 UIA 坐标操作不被遮罩吃掉
                 if ((data.flags & NativeMethods.LLMHF_INJECTED) != 0)
                     return NativeMethods.CallNextHookEx(_mouseHook, nCode, wParam, lParam);
-                return (IntPtr)1; // 物理鼠标事件全部吞掉
+
+                LastActivityTick = Environment.TickCount;
+
+                int now = LastActivityTick;
+                if (now - _lastMouseNotifyTick > 150 || now < _lastMouseNotifyTick)
+                {
+                    _lastMouseNotifyTick = now;
+                    Action notify = PhysicalMouseActivity;
+                    if (notify != null) notify();
+                }
+
+                if (SuppressMouse) return (IntPtr)1; // 纯黑态：吞掉物理鼠标，防误触
+                return NativeMethods.CallNextHookEx(_mouseHook, nCode, wParam, lParam);
             }
             catch
             {

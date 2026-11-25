@@ -13,11 +13,13 @@ namespace BlackScreenLock
         public const int WM_APP_KEY = 0x8000 + 200;      // wParam=vk, lParam=shift
         public const int WM_APP_TOGGLE = 0x8000 + 201;
         public const int WM_APP_FORCE_UNLOCK = 0x8000 + 202;
+        public const int WM_APP_MOUSE = 0x8000 + 203;
 
         public event Action<Keys, bool> LockedKeyDown;
         public event Action HotkeyPressed;
         public event Action DisplayTurnedOn;
         public event Action ForceUnlockRequested;
+        public event Action PhysicalMouseActivity;
 
         private IntPtr _powerNotification = IntPtr.Zero;
 
@@ -95,6 +97,13 @@ namespace BlackScreenLock
                 case WM_APP_FORCE_UNLOCK:
                     {
                         Action handler = ForceUnlockRequested;
+                        if (handler != null) handler();
+                        break;
+                    }
+
+                case WM_APP_MOUSE:
+                    {
+                        Action handler = PhysicalMouseActivity;
                         if (handler != null) handler();
                         break;
                     }

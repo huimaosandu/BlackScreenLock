@@ -50,17 +50,38 @@ namespace BlackScreenLock
             {
                 Config cfg = Config.Load();
                 cfg.SetPassword("Abc123");
-                LockController controller = new LockController(cfg, IntPtr.Zero);
+                LockOverlayForm overlay = new LockOverlayForm();
+                LockController controller = new LockController(cfg, IntPtr.Zero, overlay);
                 bool okRight = TypePassword(controller, "Abc123", 0);
                 bool okWrong = !TypePassword(controller, "Abc124", 0);
                 bool okBack = TypePassword(controller, "Abc123X", 1);
                 controller.Dispose();
+                overlay.Dispose();
                 Check(log, ref failed, "锁屏输入与密码校验", okRight && okWrong && okBack,
                     "正确序列=" + okRight + " 错误序列被拒=" + okWrong + " 退格后可解锁=" + okBack);
             }
             catch (Exception ex)
             {
                 Check(log, ref failed, "锁屏输入与密码校验", false, ex.GetType().Name + ": " + ex.Message);
+            }
+
+            // 1c) 遮罩层：截图排除（WDA）+ 提示界面预览导出
+            try
+            {
+                LockOverlayForm overlay = new LockOverlayForm();
+                bool excluded = overlay.CaptureExcluded;
+                string preview = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ui-preview.png");
+                overlay.ExportPreview(preview);
+                bool previewOk = File.Exists(preview) && new FileInfo(preview).Length > 0;
+                overlay.Dispose();
+                Check(log, ref failed, "遮罩截图排除 (WDA)", excluded,
+                    excluded ? "SetWindowDisplayAffinity 成功：遮罩不会出现在截图里" : "设置失败，遮罩可能被截屏拍到");
+                Check(log, ref failed, "提示界面预览导出", previewOk,
+                    previewOk ? "已导出 " + preview : "导出失败");
+            }
+            catch (Exception ex)
+            {
+                Check(log, ref failed, "遮罩截图排除 (WDA)", false, ex.GetType().Name + ": " + ex.Message);
             }
 
             // 2) 按键映射
