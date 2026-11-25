@@ -8,9 +8,13 @@ namespace BlackScreenLock
     /// 密码设置/修改对话框。
     /// 首次设置：只需输入新密码（不显示原密码框）。
     /// 之后修改：必须先通过原密码校验，才能改新密码。
+    /// 底部固定一行“确认 / 取消”，与提示文字分区，不会被遮挡。
     /// </summary>
     internal sealed class PasswordDialog : Form
     {
+        private const int SideMargin = 20;
+        private const int ContentWidth = 380;
+
         private readonly Config _config;
         private readonly bool _requireOld;
 
@@ -38,7 +42,6 @@ namespace BlackScreenLock
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(400, _requireOld ? 288 : 226);
             Icon = IconFactory.AppIcon;
             Font = uiFont;
             BackColor = Color.FromArgb(250, 250, 252);
@@ -47,57 +50,62 @@ namespace BlackScreenLock
 
             if (_requireOld)
             {
-                Controls.Add(MakeLabel("原密码", 18, y));
+                AddLabel("原密码（必须正确才能修改）", y, uiFont);
                 y += 22;
-                _oldBox = MakeTextBox(18, y, true);
-                Controls.Add(_oldBox);
+                _oldBox = AddTextBox(y);
                 y += 40;
             }
 
-            Controls.Add(MakeLabel("新密码（4 ~ 64 位，字母、数字、符号均可）", 18, y));
+            AddLabel("新密码（4 ~ 64 位，字母、数字、符号均可）", y, uiFont);
             y += 22;
-            _newBox = MakeTextBox(18, y, true);
-            Controls.Add(_newBox);
+            _newBox = AddTextBox(y);
             y += 40;
 
-            Controls.Add(MakeLabel("确认新密码", 18, y));
+            AddLabel("确认新密码", y, uiFont);
             y += 22;
-            _confirmBox = MakeTextBox(18, y, true);
-            Controls.Add(_confirmBox);
+            _confirmBox = AddTextBox(y);
             y += 40;
 
             _showBox = new CheckBox();
             _showBox.Text = "显示密码";
-            _showBox.Location = new Point(18, y);
-            _showBox.Size = new Size(120, 22);
+            _showBox.Location = new Point(SideMargin, y);
+            _showBox.Size = new Size(160, 22);
             _showBox.Font = uiFont;
             _showBox.CheckedChanged += OnShowChanged;
             Controls.Add(_showBox);
-            y += 34;
+            y += 30;
 
             _hint = new Label();
-            _hint.Location = new Point(18, y);
-            _hint.Size = new Size(364, 40);
+            _hint.Location = new Point(SideMargin, y);
+            _hint.Size = new Size(ContentWidth, 58);
             _hint.Font = new Font("Microsoft YaHei UI", 8.5f, FontStyle.Regular, GraphicsUnit.Point);
             _hint.ForeColor = Color.FromArgb(110, 110, 120);
-            _hint.Text = "提示：黑屏锁定后屏幕不可见，解锁需要在键盘上盲打密码再按回车；\n解锁快捷键默认 Ctrl + Alt + L，可在托盘菜单中修改。";
+            _hint.Text = "锁定后屏幕不可见，解锁时需要盲打此密码再按回车。\r\n解锁不区分字母大小写（CapsLock 开或关都能解开）。\r\n解锁快捷键可在托盘右键菜单「编辑快捷键」中修改。";
             Controls.Add(_hint);
+            y += 66;
+
+            // ---- 按钮行：独立分区，不再与提示文字重叠 ----
+            int buttonY = y;
+            int cancelX = SideMargin + ContentWidth - 96;
+            int okX = cancelX - 8 - 96;
 
             _okButton = new Button();
-            _okButton.Text = "确定";
-            _okButton.Location = new Point(196, ClientSize.Height - 44);
-            _okButton.Size = new Size(84, 30);
+            _okButton.Text = "确认";
+            _okButton.Location = new Point(okX, buttonY);
+            _okButton.Size = new Size(96, 32);
             _okButton.Font = uiFont;
             _okButton.Click += OnOk;
             Controls.Add(_okButton);
 
             _cancelButton = new Button();
             _cancelButton.Text = "取消";
-            _cancelButton.Location = new Point(292, ClientSize.Height - 44);
-            _cancelButton.Size = new Size(84, 30);
+            _cancelButton.Location = new Point(cancelX, buttonY);
+            _cancelButton.Size = new Size(96, 32);
             _cancelButton.Font = uiFont;
             _cancelButton.DialogResult = DialogResult.Cancel;
             Controls.Add(_cancelButton);
+
+            ClientSize = new Size(SideMargin * 2 + ContentWidth, buttonY + 32 + 16);
 
             AcceptButton = _okButton;
             CancelButton = _cancelButton;
@@ -106,25 +114,26 @@ namespace BlackScreenLock
             else _newBox.Focus();
         }
 
-        private static Label MakeLabel(string text, int x, int y)
+        private void AddLabel(string text, int y, Font font)
         {
             Label label = new Label();
             label.Text = text;
-            label.Location = new Point(x, y);
-            label.Size = new Size(364, 20);
-            label.Font = new Font("Microsoft YaHei UI", 9f, FontStyle.Regular, GraphicsUnit.Point);
+            label.Location = new Point(SideMargin, y);
+            label.Size = new Size(ContentWidth, 20);
+            label.Font = font;
             label.ForeColor = Color.FromArgb(60, 60, 70);
-            return label;
+            Controls.Add(label);
         }
 
-        private static TextBox MakeTextBox(int x, int y, bool isPassword)
+        private TextBox AddTextBox(int y)
         {
             TextBox box = new TextBox();
-            box.Location = new Point(x, y);
-            box.Size = new Size(364, 26);
+            box.Location = new Point(SideMargin, y);
+            box.Size = new Size(ContentWidth, 26);
             box.Font = new Font("Microsoft YaHei UI", 10f, FontStyle.Regular, GraphicsUnit.Point);
-            if (isPassword) box.PasswordChar = '●';
+            box.PasswordChar = '●';
             box.MaxLength = 64;
+            Controls.Add(box);
             return box;
         }
 
@@ -156,6 +165,19 @@ namespace BlackScreenLock
                 _newBox.Focus();
                 return;
             }
+
+            // 锁屏后是盲打，只能用键面能直接敲出来的 ASCII 字符，中文/全角字符打不出来
+            foreach (char c in pwd)
+            {
+                if (c < 0x20 || c > 0x7E)
+                {
+                    MessageBox.Show(this, "密码只能使用英文字母、数字和英文符号。\n不能包含中文、全角字符或不可见字符，否则黑屏时无法盲打输入。",
+                        "黑屏锁", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    _newBox.Focus();
+                    return;
+                }
+            }
+
             if (pwd != _confirmBox.Text)
             {
                 MessageBox.Show(this, "两次输入的新密码不一致。", "黑屏锁", MessageBoxButtons.OK, MessageBoxIcon.Warning);

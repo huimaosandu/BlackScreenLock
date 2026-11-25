@@ -135,6 +135,18 @@ namespace BlackScreenLock
         public bool VerifyPassword(string password)
         {
             if (!HasPassword) return password == DefaultPassword;
+
+            // 盲打时最容易出错的就是大小写（CapsLock 状态、Shift 是否按住）。
+            // 先按原样比对；不通过时再按小写规范化比对一次，兼容历史配置，不区分字母大小写。
+            if (Match(password)) return true;
+            string lowered = (password ?? string.Empty).ToLowerInvariant();
+            if (lowered != password) return Match(lowered);
+            return false;
+        }
+
+        private bool Match(string password)
+        {
+            if (Salt == null || Hash == null) return false;
             byte[] test = Derive(password, Salt);
             if (test.Length != Hash.Length) return false;
             // 定长比较，避免明显的时序差异
