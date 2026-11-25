@@ -111,6 +111,10 @@ namespace BlackScreenLock
             _tray.DoubleClick += delegate { ShowOptionsDialog(); };
 
             RefreshMenuText();
+
+            ShowBalloon("黑屏锁已启动",
+                "快捷键 " + KeyMapper.HotkeyText(_config.HotKeyModifiers, _config.HotKeyVk) +
+                " 锁定屏幕；右键托盘图标可设置密码、快捷键与开机自启。");
         }
 
         private void RefreshMenuText()
