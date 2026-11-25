@@ -20,6 +20,13 @@ namespace BlackScreenLock
         private bool _shiftDown;
         private int _lastMouseNotifyTick;
 
+        /// <summary>
+        /// 是否处于“拦截”状态。卸载时先置 false 再摘钩子：
+        /// 即使 UnhookWindowsHookEx 失败（钩子仍挂在钩子链上），回调也会直接放行，
+        /// 不会把系统键盘/鼠标持续吞掉——这是防止解锁后输入失灵的最后一道保险。
+        /// </summary>
+        private volatile bool _active;
+
         /// <summary>物理按键按下（虚拟键, Shift 是否按下）。</summary>
         public event Action<Keys, bool> PhysicalKeyDown;
 
@@ -32,7 +39,7 @@ namespace BlackScreenLock
         /// <summary>最近一次物理键鼠活动的时间戳（Environment.TickCount）。</summary>
         public int LastActivityTick;
 
-        public bool IsInstalled { get { return _keyboardHook != IntPtr.Zero; } }
+        public bool IsInstalled { get { return _active; } }
 
         public InputHook()
         {
@@ -42,7 +49,24 @@ namespace BlackScreenLock
 
         public bool Install()
         {
-            if (_keyboardHook != IntPtr.Zero) return true;
+            if (_keyboardHook != IntPtr.Zero)
+            {
+                // 上一次卸载失败留下的句柄仍在钩子链上，可继续使用；补装可能已摘掉的鼠标钩子
+                if (_mouseHook == IntPtr.Zero)
+                {
+                    try
+                    {
+                        IntPtr hm = NativeMethods.GetModuleHandle(null);
+                        _mouseHook = NativeMethods.SetWindowsHookEx(NativeMethods.WH_MOUSE_LL, _mouseProc, hm, 0);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error("InputHook.Install(补装鼠标钩子)", ex);
+                    }
+                }
+                _active = true;
+                return true;
+            }
             try
             {
                 IntPtr module = NativeMethods.GetModuleHandle(null);
@@ -56,6 +80,7 @@ namespace BlackScreenLock
                 }
                 if (_mouseHook == IntPtr.Zero)
                     Log.Write("安装鼠标钩子失败（键盘已生效）: " + Marshal.GetLastWin32Error());
+                _active = true;
                 return true;
             }
             catch (Exception ex)
@@ -68,29 +93,83 @@ namespace BlackScreenLock
 
         public void Uninstall()
         {
+            // 先关掉拦截开关，再摘钩子。这样即使卸载失败，也不会继续吞键。
+            _active = false;
             try
             {
                 if (_mouseHook != IntPtr.Zero)
-                {
-                    NativeMethods.UnhookWindowsHookEx(_mouseHook);
-                    _mouseHook = IntPtr.Zero;
-                }
+                    _mouseHook = UnhookWithRetry(_mouseHook, "鼠标");
                 if (_keyboardHook != IntPtr.Zero)
-                {
-                    NativeMethods.UnhookWindowsHookEx(_keyboardHook);
-                    _keyboardHook = IntPtr.Zero;
-                }
+                    _keyboardHook = UnhookWithRetry(_keyboardHook, "键盘");
             }
             catch (Exception ex)
             {
                 Log.Error("InputHook.Uninstall", ex);
             }
             _shiftDown = false;
+            LastActivityTick = 0;
+        }
+
+        /// <summary>卸载单个钩子，失败重试 3 次；返回剩余句柄（IntPtr.Zero 表示已干净摘除）。</summary>
+        private IntPtr UnhookWithRetry(IntPtr hook, string name)
+        {
+            for (int attempt = 1; attempt <= 3; attempt++)
+            {
+                try
+                {
+                    if (NativeMethods.UnhookWindowsHookEx(hook))
+                        return IntPtr.Zero;
+                    Log.Write(name + "钩子卸载失败（第 " + attempt + " 次尝试），错误码 " + Marshal.GetLastWin32Error());
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("InputHook.Unhook " + name, ex);
+                }
+                System.Threading.Thread.Sleep(40);
+            }
+            Log.Write(name + "钩子三次卸载均失败，已切换为放行模式（不再吞键），进程退出时由系统回收");
+            return hook;
+        }
+
+        /// <summary>
+        /// 解锁时调用：用注入的方式把所有修饰键、常用键和鼠标键补一个“弹起”。
+        /// 锁屏期间这些键的 keyup 会被钩子吞掉（例如按下 Ctrl+Alt+L 时 Ctrl/Alt 的按下已到达系统，
+        /// 松开却被吞），系统便认为它们一直按着，表现为解锁后打字全成快捷键、鼠标点击变成 Ctrl+点击。
+        /// 注入事件带 INJECTED 标记，永远不被本钩子拦截。
+        /// </summary>
+        public void ReleaseStuckInput()
+        {
+            try
+            {
+                byte[] keys = new byte[]
+                {
+                    (byte)NativeMethods.VK_LCONTROL, (byte)NativeMethods.VK_RCONTROL,
+                    (byte)NativeMethods.VK_LMENU, (byte)NativeMethods.VK_RMENU,
+                    (byte)NativeMethods.VK_LSHIFT, (byte)NativeMethods.VK_RSHIFT,
+                    (byte)NativeMethods.VK_LWIN, (byte)NativeMethods.VK_RWIN,
+                    (byte)NativeMethods.VK_CONTROL, (byte)NativeMethods.VK_MENU, (byte)NativeMethods.VK_SHIFT,
+                    (byte)NativeMethods.VK_RETURN, (byte)NativeMethods.VK_SPACE,
+                    (byte)NativeMethods.VK_TAB, (byte)NativeMethods.VK_ESCAPE, (byte)NativeMethods.VK_BACK
+                };
+
+                foreach (byte vk in keys)
+                    NativeMethods.keybd_event(vk, 0, NativeMethods.KEYEVENTF_KEYUP, UIntPtr.Zero);
+
+                NativeMethods.mouse_event(
+                    NativeMethods.MOUSEEVENTF_LEFTUP | NativeMethods.MOUSEEVENTF_RIGHTUP | NativeMethods.MOUSEEVENTF_MIDDLEUP,
+                    0, 0, 0, UIntPtr.Zero);
+
+                _shiftDown = false;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("InputHook.ReleaseStuckInput", ex);
+            }
         }
 
         private IntPtr KeyboardCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (nCode < 0)
+            if (nCode < 0 || !_active)
                 return NativeMethods.CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
             try
             {
@@ -128,7 +207,7 @@ namespace BlackScreenLock
 
         private IntPtr MouseCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (nCode < 0)
+            if (nCode < 0 || !_active)
                 return NativeMethods.CallNextHookEx(_mouseHook, nCode, wParam, lParam);
             try
             {
@@ -161,6 +240,7 @@ namespace BlackScreenLock
         public void Dispose()
         {
             Uninstall();
+            ReleaseStuckInput();
         }
     }
 }

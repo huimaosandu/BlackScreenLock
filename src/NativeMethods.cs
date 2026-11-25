@@ -52,8 +52,30 @@ namespace BlackScreenLock
         public const int VK_RETURN = 0x0D;
         public const int VK_ESCAPE = 0x1B;
         public const int VK_SHIFT = 0x10;
+        public const int VK_CONTROL = 0x11;
+        public const int VK_MENU = 0x12;
+        public const int VK_SPACE = 0x20;
+        public const int VK_TAB = 0x09;
+        public const int VK_LWIN = 0x5B;
+        public const int VK_RWIN = 0x5C;
         public const int VK_LSHIFT = 0xA0;
         public const int VK_RSHIFT = 0xA1;
+        public const int VK_LCONTROL = 0xA2;
+        public const int VK_RCONTROL = 0xA3;
+        public const int VK_LMENU = 0xA4;
+        public const int VK_RMENU = 0xA5;
+
+        // ---------- 注入“弹起”，用于解锁后清理卡住的键 ----------
+        public const uint KEYEVENTF_KEYUP = 0x0002;
+        public const uint MOUSEEVENTF_LEFTUP = 0x0004;
+        public const uint MOUSEEVENTF_RIGHTUP = 0x0010;
+        public const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
+
+        [DllImport("user32.dll")]
+        public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+        [DllImport("user32.dll")]
+        public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
 
         // ---------- 虚拟键 -> 字符 ----------
         public const int MAPVK_VK_TO_CHAR = 2;

@@ -90,6 +90,9 @@ namespace BlackScreenLock
             StopTimer(ref _idleTimer);
             _hook.Uninstall();
             _overlay.HideOverlay();
+            // 摘钩子、藏遮罩之后再补“弹起”：解锁这一下按键/点击的 up 事件已被遮罩吃掉，
+            // 不补会让 Ctrl / Alt / 鼠标左键卡在按下状态，表现为解锁后键盘错乱、点不开东西。
+            _hook.ReleaseStuckInput();
 
             // 防御：用户可能自己按过显示器电源，解锁时确保一定点亮
             DisplayControl.MonitorOn();
@@ -284,6 +287,7 @@ namespace BlackScreenLock
                 _prompting = false;
                 _hook.Uninstall();
                 _overlay.HideOverlay();
+                _hook.ReleaseStuckInput();
                 DisplayControl.MonitorOn();
                 DisplayControl.ReleaseExecutionState();
             }
