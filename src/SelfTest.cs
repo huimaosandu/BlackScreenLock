@@ -50,15 +50,27 @@ namespace BlackScreenLock
             {
                 Config cfg = Config.Load();
                 cfg.SetPassword("Abc123");
+                cfg.DimBacklight = false; // 自检不走真实调暗路径（Esc 测试会触发 BackToIdle）
                 LockOverlayForm overlay = new LockOverlayForm();
                 LockController controller = new LockController(cfg, IntPtr.Zero, overlay);
                 bool okRight = TypePassword(controller, "Abc123", 0);
                 bool okWrong = !TypePassword(controller, "Abc124", 0);
                 bool okBack = TypePassword(controller, "Abc123X", 1);
+
+                // Esc 快捷路径（真实 ProcessKey 链路）：有输入时只清空、保持磨砂界面；空缓冲再按才返回纯黑
+                controller.SelfTestBeginPrompt();
+                controller.ProcessKey(Keys.A, false);      // 输入一个字符
+                controller.ProcessKey(Keys.Escape, false); // 第一次 Esc：只清空，磨砂界面应保留
+                bool esc1KeptPrompt = controller.IsLocked && controller.IsPromptVisible;
+                controller.ProcessKey(Keys.Escape, false); // 第二次 Esc：返回纯黑（仍是锁定态）
+                bool esc2BackToIdle = controller.IsLocked && !controller.IsPromptVisible;
+
                 controller.Dispose();
                 overlay.Dispose();
                 Check(log, ref failed, "锁屏输入与密码校验", okRight && okWrong && okBack,
                     "正确序列=" + okRight + " 错误序列被拒=" + okWrong + " 退格后可解锁=" + okBack);
+                Check(log, ref failed, "Esc 清空/返回黑屏", esc1KeptPrompt && esc2BackToIdle,
+                    "有输入按 Esc 保持磨砂=" + esc1KeptPrompt + "，空缓冲按 Esc 返回纯黑=" + esc2BackToIdle);
             }
             catch (Exception ex)
             {

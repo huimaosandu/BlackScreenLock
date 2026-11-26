@@ -119,18 +119,28 @@ namespace BlackScreenLock
 
             WakeToPrompt();
 
+            // Esc 语义必须在缓冲被清掉之前判定（HandleKeyCore 的 Esc 分支会清空缓冲）：
+            // 有输入→只清空、磨砂界面保留；无输入→返回纯黑（与「重新黑屏」按钮等效）
+            bool escHasInput = key == Keys.Escape && _buffer.Length > 0;
+
             if (HandleKeyCore(key, shift, true))
             {
                 Unlock();
                 return;
             }
 
-            // Esc 在无输入可清时 = 重新黑屏（与卡片上的「重新黑屏」按钮等效）：
-            // 有输入时第一下 Esc 只清空，空缓冲再按才返回纯黑，避免误触丢掉已输的密码
-            if (key == Keys.Escape && _prompting && _buffer.Length == 0)
+            if (key == Keys.Escape)
             {
-                BackToIdle();
-                return;
+                if (escHasInput)
+                {
+                    _overlay.SetDotCount(_buffer.Length);
+                    return;
+                }
+                if (_prompting)
+                {
+                    BackToIdle();
+                    return;
+                }
             }
 
             _overlay.SetDotCount(_buffer.Length);
@@ -151,6 +161,14 @@ namespace BlackScreenLock
 
         internal void SelfTestReset()
         {
+            _buffer.Length = 0;
+        }
+
+        /// <summary>仅供自检：不装钩子、不动遮罩，直接进入“已锁定 + 磨砂提示”状态，便于驱动真实 ProcessKey 链路。</summary>
+        internal void SelfTestBeginPrompt()
+        {
+            _locked = true;
+            _prompting = true;
             _buffer.Length = 0;
         }
 
