@@ -124,6 +124,15 @@ namespace BlackScreenLock
                 Unlock();
                 return;
             }
+
+            // Esc 在无输入可清时 = 重新黑屏（与卡片上的「重新黑屏」按钮等效）：
+            // 有输入时第一下 Esc 只清空，空缓冲再按才返回纯黑，避免误触丢掉已输的密码
+            if (key == Keys.Escape && _prompting && _buffer.Length == 0)
+            {
+                BackToIdle();
+                return;
+            }
+
             _overlay.SetDotCount(_buffer.Length);
         }
 

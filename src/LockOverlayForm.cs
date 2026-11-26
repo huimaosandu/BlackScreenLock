@@ -404,7 +404,7 @@ namespace BlackScreenLock
                 new Rectangle(card.X + 60, card.Y + 20, card.Width - 90, 26),
                 Color.FromArgb(255, 244, 244, 250), TextFormatFlags.NoPrefix);
 
-            TextRenderer.DrawText(g, "输入密码后按回车解锁，Esc 清空", _subFont,
+            TextRenderer.DrawText(g, "输入密码后按回车解锁；Esc 清空，再按返回黑屏", _subFont,
                 new Rectangle(card.X + 60, card.Y + 48, card.Width - 90, 20),
                 Color.FromArgb(255, 142, 142, 160), TextFormatFlags.NoPrefix);
 
@@ -455,7 +455,7 @@ namespace BlackScreenLock
             }
 
             // 按钮
-            Rectangle dismiss = new Rectangle(right - 96, card.Y + 198, 96, 40);
+            Rectangle dismiss = new Rectangle(right - 124, card.Y + 198, 124, 40);
             Rectangle submit = new Rectangle(dismiss.X - 12 - 112, card.Y + 198, 112, 40);
             _submitRect = submit;
             _dismissRect = dismiss;
@@ -481,7 +481,7 @@ namespace BlackScreenLock
                 using (Pen pen = new Pen(Color.FromArgb(255, 68, 68, 82), 1f))
                     g.DrawPath(pen, dismissPath);
             }
-            TextRenderer.DrawText(g, "重新黑屏", _subFont, dismiss, Color.FromArgb(255, 200, 200, 214),
+            TextRenderer.DrawText(g, "重新黑屏 (Esc)", _subFont, dismiss, Color.FromArgb(255, 200, 200, 214),
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
         }
 
