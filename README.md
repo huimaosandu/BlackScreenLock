@@ -11,9 +11,11 @@
 
 ## 快速开始
 
-免安装单文件，直接下载 `assets/BlackScreenLock.exe`（约 64 KB，依赖系统自带的 .NET Framework 4.x，无需安装任何运行时）。仓库里 `dist/` 下同名文件是本地构建输出，内容相同。
+免安装单文件，到 [Releases](https://github.com/huimaosandu/BlackScreenLock/releases/latest) 下载 `BlackScreenLock.exe`（约 64 KB，依赖系统自带的 .NET Framework 4.x，无需安装任何运行时）。
 
-1. 双击 `assets/BlackScreenLock.exe`（本地构建则是 `dist/BlackScreenLock.exe`）。**首次运行只要求设置解锁密码**（4~64 位，只能用英文字母/数字/英文符号），窗口底部有「确认」「取消」两个按钮；设置完自动进入托盘。
+直链：`https://github.com/huimaosandu/BlackScreenLock/releases/latest/download/BlackScreenLock.exe`（仓库源码树里不再存放 exe，`dist/` 是本地构建输出）
+
+1. 双击下载到的 `BlackScreenLock.exe`。**首次运行只要求设置解锁密码**（4~64 位，只能用英文字母/数字/英文符号），窗口底部有「确认」「取消」两个按钮；设置完自动进入托盘。
 2. 按 `Ctrl + Alt + L`（或托盘菜单「立即锁屏」）→ 屏幕立刻变成纯黑。
 3. 解锁：**动一下鼠标或按任意键**，画面立即变成磨砂玻璃并弹出密码卡片。
    - 输入密码，按 `回车` 或点「解锁」
