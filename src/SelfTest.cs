@@ -157,6 +157,21 @@ namespace BlackScreenLock
                 if (window != null) window.Destroy();
             }
 
+            // 5b) “保持系统唤醒”执行状态可开可关（只影响本自检进程，退出即自动释放）
+            try
+            {
+                Config cfgProbe = Config.Load();
+                bool onOk = DisplayControl.SetAlwaysAwake(true);
+                bool offOk = DisplayControl.SetAlwaysAwake(false);
+                DisplayControl.SetAlwaysAwake(cfgProbe.AlwaysAwake);
+                Check(log, ref failed, "保持系统唤醒执行状态", onOk && offOk,
+                    "开/关均可调用，已恢复为配置值（" + (cfgProbe.AlwaysAwake ? "默认开启" : "关闭") + "）");
+            }
+            catch (Exception ex)
+            {
+                Check(log, ref failed, "保持系统唤醒执行状态", false, ex.Message);
+            }
+
             // 6) 开机自启动项可读取（不写入）
             try
             {

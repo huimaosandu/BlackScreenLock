@@ -21,6 +21,7 @@ namespace BlackScreenLock
         private ContextMenuStrip _menu;
         private ToolStripMenuItem _lockItem;
         private ToolStripMenuItem _autoStartItem;
+        private ToolStripMenuItem _awakeItem;
         private bool _hotkeyRegistered;
         private bool _ready;
 
@@ -60,6 +61,7 @@ namespace BlackScreenLock
 
             BuildTray();
             ApplyHotkey(_config.HotKeyModifiers, _config.HotKeyVk, false);
+            ApplyAlwaysAwake(_config.AlwaysAwake, false);
 
             _ready = true;
             Log.Write("程序启动完成，热键=" + KeyMapper.HotkeyText(_config.HotKeyModifiers, _config.HotKeyVk));
@@ -83,6 +85,12 @@ namespace BlackScreenLock
             _autoStartItem.Checked = AutoStart.IsEnabled();
             _autoStartItem.Click += delegate { ToggleAutoStart(); };
             _menu.Items.Add(_autoStartItem);
+
+            _awakeItem = new ToolStripMenuItem("保持系统唤醒");
+            _awakeItem.CheckOnClick = true;
+            _awakeItem.Checked = _config.AlwaysAwake;
+            _awakeItem.Click += delegate { ToggleAlwaysAwake(); };
+            _menu.Items.Add(_awakeItem);
 
             ToolStripMenuItem passwordItem = new ToolStripMenuItem("设置密码...");
             passwordItem.Click += delegate { ShowPasswordDialog(); };
@@ -240,6 +248,24 @@ namespace BlackScreenLock
 
         // ---------------- 菜单动作 ----------------
 
+        private void ToggleAlwaysAwake()
+        {
+            bool wanted = _awakeItem.Checked;
+            ApplyAlwaysAwake(wanted, true);
+            ShowBalloon("保持系统唤醒已" + (wanted ? "开启" : "关闭"),
+                wanted ? "只要本程序在托盘运行，Windows 不会进入睡眠/休眠。" : "已恢复系统默认的睡眠策略。");
+        }
+
+        /// <summary>应用“保持唤醒”选项；persist=true 时同时写入配置文件。</summary>
+        private void ApplyAlwaysAwake(bool enabled, bool persist)
+        {
+            _config.AlwaysAwake = enabled;
+            bool ok = DisplayControl.SetAlwaysAwake(enabled);
+            if (_awakeItem != null) _awakeItem.Checked = enabled;
+            if (persist) _config.Save();
+            Log.Write("保持系统唤醒=" + (enabled ? "开启" : "关闭") + (ok ? string.Empty : "（SetThreadExecutionState 调用失败）"));
+        }
+
         private void ToggleAutoStart()
         {
             bool wanted = _autoStartItem.Checked;
@@ -299,6 +325,7 @@ namespace BlackScreenLock
                 bool autoOk = AutoStart.SetEnabled(dialog.AutoStartEnabled);
                 _config.SoundOnError = dialog.SoundOnError;
                 _config.KeepDisplayOff = dialog.KeepDisplayOff;
+                ApplyAlwaysAwake(dialog.AlwaysAwake, false);
                 bool saveOk = _config.Save();
 
                 if (_autoStartItem != null)

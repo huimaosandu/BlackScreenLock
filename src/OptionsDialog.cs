@@ -5,7 +5,7 @@ using System.Windows.Forms;
 namespace BlackScreenLock
 {
     /// <summary>
-    /// 高级选项窗口：开机自启动、错误提示音、锁定期间强制保持黑屏。
+    /// 高级选项窗口：开机自启动、错误提示音、保持系统唤醒。
     /// 只收集用户选择，写注册表与保存配置由调用方统一执行。
     /// </summary>
     internal sealed class OptionsDialog : Form
@@ -13,9 +13,12 @@ namespace BlackScreenLock
         private readonly Config _config;
         private CheckBox _autoStart;
         private CheckBox _sound;
+        private CheckBox _awake;
 
         public bool AutoStartEnabled { get { return _autoStart.Checked; } }
         public bool SoundOnError { get { return _sound.Checked; } }
+        /// <summary>始终阻止系统睡眠，默认勾选。</summary>
+        public bool AlwaysAwake { get { return _awake.Checked; } }
         /// <summary>锁屏已改为纯黑遮罩代替关屏，不再提供“强制保持黑屏”开关。</summary>
         public bool KeepDisplayOff { get { return false; } }
 
@@ -35,7 +38,7 @@ namespace BlackScreenLock
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(420, 306);
+            ClientSize = new Size(420, 352);
             Icon = IconFactory.AppIcon;
             Font = uiFont;
             BackColor = Color.FromArgb(250, 250, 252);
@@ -64,8 +67,25 @@ namespace BlackScreenLock
             _sound.Checked = _config != null && _config.SoundOnError;
             Controls.Add(_sound);
 
+            _awake = new CheckBox();
+            _awake.Text = "让 Windows 保持唤醒（不进入睡眠 / 休眠）";
+            _awake.Location = new Point(18, 114);
+            _awake.Size = new Size(384, 24);
+            _awake.Font = uiFont;
+            _awake.Checked = _config == null || _config.AlwaysAwake;
+            Controls.Add(_awake);
+
+            Label awakeTip = new Label();
+            awakeTip.Location = new Point(38, 140);
+            awakeTip.Size = new Size(364, 34);
+            awakeTip.Font = tipFont;
+            awakeTip.ForeColor = Color.FromArgb(120, 120, 130);
+            awakeTip.Text = "默认开启。开启后只要本程序在托盘运行，后台自动化不会因系统睡眠而中断；\r\n" +
+                            "显示器仍按电源计划关闭以省电（要让屏幕也常亮，请在 Windows 电源设置里选“从不关闭显示器”）。";
+            Controls.Add(awakeTip);
+
             Label keepNote = new Label();
-            keepNote.Location = new Point(18, 114);
+            keepNote.Location = new Point(18, 180);
             keepNote.Size = new Size(384, 54);
             keepNote.Font = tipFont;
             keepNote.ForeColor = Color.FromArgb(120, 120, 130);
@@ -75,14 +95,14 @@ namespace BlackScreenLock
 
             Label pathLabel = new Label();
             pathLabel.Text = "配置文件位置";
-            pathLabel.Location = new Point(18, 184);
+            pathLabel.Location = new Point(18, 244);
             pathLabel.Size = new Size(200, 20);
             pathLabel.Font = uiFont;
             pathLabel.ForeColor = Color.FromArgb(60, 60, 70);
             Controls.Add(pathLabel);
 
             TextBox pathBox = new TextBox();
-            pathBox.Location = new Point(18, 206);
+            pathBox.Location = new Point(18, 266);
             pathBox.Size = new Size(384, 24);
             pathBox.Font = new Font("Consolas", 8.5f, FontStyle.Regular, GraphicsUnit.Point);
             pathBox.ReadOnly = true;
@@ -92,7 +112,7 @@ namespace BlackScreenLock
 
             Button okButton = new Button();
             okButton.Text = "确定";
-            okButton.Location = new Point(216, 258);
+            okButton.Location = new Point(216, 302);
             okButton.Size = new Size(84, 30);
             okButton.Font = uiFont;
             okButton.Click += OnOk;
@@ -100,7 +120,7 @@ namespace BlackScreenLock
 
             Button cancelButton = new Button();
             cancelButton.Text = "取消";
-            cancelButton.Location = new Point(312, 258);
+            cancelButton.Location = new Point(312, 302);
             cancelButton.Size = new Size(84, 30);
             cancelButton.Font = uiFont;
             cancelButton.DialogResult = DialogResult.Cancel;
@@ -108,7 +128,7 @@ namespace BlackScreenLock
 
             Button openFolder = new Button();
             openFolder.Text = "打开所在文件夹";
-            openFolder.Location = new Point(18, 258);
+            openFolder.Location = new Point(18, 302);
             openFolder.Size = new Size(130, 30);
             openFolder.Font = uiFont;
             openFolder.Click += OnOpenFolder;
