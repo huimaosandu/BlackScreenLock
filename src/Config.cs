@@ -26,6 +26,8 @@ namespace BlackScreenLock
         public bool KeepDisplayOff = true;
         /// <summary>始终阻止系统睡眠（默认开启）：只要程序在托盘运行，Windows 不会空闲睡眠/休眠。</summary>
         public bool AlwaysAwake = true;
+        /// <summary>锁屏时把显示器背光调到最低（默认开启）：纯黑遮罩 + 背光最低，视觉更接近全黑；解锁后恢复。</summary>
+        public bool DimBacklight = true;
 
         /// <summary>全局热键：修饰键位（MOD_CONTROL|MOD_ALT 等）</summary>
         public int HotKeyModifiers = NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT;
@@ -86,6 +88,7 @@ namespace BlackScreenLock
                             case "soundonerror": cfg.SoundOnError = val != "0"; break;
                             case "keepdisplayoff": cfg.KeepDisplayOff = val != "0"; break;
                             case "alwaysawake": cfg.AlwaysAwake = val != "0"; break;
+                            case "dimbacklight": cfg.DimBacklight = val != "0"; break;
                             case "hotkeymodifiers": cfg.HotKeyModifiers = ParseInt(val, cfg.HotKeyModifiers); break;
                             case "hotkeyvk": cfg.HotKeyVk = ParseInt(val, cfg.HotKeyVk); break;
                         }
@@ -110,6 +113,7 @@ namespace BlackScreenLock
                 sb.AppendLine("SoundOnError=" + (SoundOnError ? "1" : "0"));
                 sb.AppendLine("KeepDisplayOff=" + (KeepDisplayOff ? "1" : "0"));
                 sb.AppendLine("AlwaysAwake=" + (AlwaysAwake ? "1" : "0"));
+                sb.AppendLine("DimBacklight=" + (DimBacklight ? "1" : "0"));
                 sb.AppendLine("HotKeyModifiers=" + HotKeyModifiers.ToString(CultureInfo.InvariantCulture));
                 sb.AppendLine("HotKeyVk=" + HotKeyVk.ToString(CultureInfo.InvariantCulture));
                 string dir = Path.GetDirectoryName(_path);
@@ -213,6 +217,7 @@ namespace BlackScreenLock
             SoundOnError = other.SoundOnError;
             KeepDisplayOff = other.KeepDisplayOff;
             AlwaysAwake = other.AlwaysAwake;
+            DimBacklight = other.DimBacklight;
             HotKeyModifiers = other.HotKeyModifiers;
             HotKeyVk = other.HotKeyVk;
         }

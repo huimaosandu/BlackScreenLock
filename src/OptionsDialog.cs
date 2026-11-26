@@ -5,7 +5,7 @@ using System.Windows.Forms;
 namespace BlackScreenLock
 {
     /// <summary>
-    /// 高级选项窗口：开机自启动、错误提示音、保持系统唤醒。
+    /// 高级选项窗口：开机自启动、错误提示音、保持系统唤醒、锁屏时背光调到最低。
     /// 只收集用户选择，写注册表与保存配置由调用方统一执行。
     /// </summary>
     internal sealed class OptionsDialog : Form
@@ -14,11 +14,14 @@ namespace BlackScreenLock
         private CheckBox _autoStart;
         private CheckBox _sound;
         private CheckBox _awake;
+        private CheckBox _dim;
 
         public bool AutoStartEnabled { get { return _autoStart.Checked; } }
         public bool SoundOnError { get { return _sound.Checked; } }
         /// <summary>始终阻止系统睡眠，默认勾选。</summary>
         public bool AlwaysAwake { get { return _awake.Checked; } }
+        /// <summary>锁屏时把显示器背光调到最低，默认勾选。</summary>
+        public bool DimBacklight { get { return _dim.Checked; } }
         /// <summary>锁屏已改为纯黑遮罩代替关屏，不再提供“强制保持黑屏”开关。</summary>
         public bool KeepDisplayOff { get { return false; } }
 
@@ -38,7 +41,7 @@ namespace BlackScreenLock
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(420, 352);
+            ClientSize = new Size(420, 386);
             Icon = IconFactory.AppIcon;
             Font = uiFont;
             BackColor = Color.FromArgb(250, 250, 252);
@@ -84,25 +87,41 @@ namespace BlackScreenLock
                             "显示器仍按电源计划关闭以省电（要让屏幕也常亮，请在 Windows 电源设置里选“从不关闭显示器”）。";
             Controls.Add(awakeTip);
 
+            _dim = new CheckBox();
+            _dim.Text = "锁屏时把显示器亮度调到最低（解锁后自动恢复）";
+            _dim.Location = new Point(18, 178);
+            _dim.Size = new Size(384, 24);
+            _dim.Font = uiFont;
+            _dim.Checked = _config == null || _config.DimBacklight;
+            Controls.Add(_dim);
+
+            Label dimTip = new Label();
+            dimTip.Location = new Point(38, 204);
+            dimTip.Size = new Size(364, 46);
+            dimTip.Font = tipFont;
+            dimTip.ForeColor = Color.FromArgb(120, 120, 130);
+            dimTip.Text = "外接显示器走 DDC/CI，笔记本内置面板走 WMI；不支持亮度调节时保持纯黑遮罩不变。\r\n" +
+                          "若程序异常退出导致屏幕偏暗，下次启动会自动恢复原亮度。";
+            Controls.Add(dimTip);
+
             Label keepNote = new Label();
-            keepNote.Location = new Point(18, 180);
-            keepNote.Size = new Size(384, 54);
+            keepNote.Location = new Point(18, 256);
+            keepNote.Size = new Size(384, 34);
             keepNote.Font = tipFont;
             keepNote.ForeColor = Color.FromArgb(120, 120, 130);
-            keepNote.Text = "锁屏用全屏纯黑遮罩代替关闭显示器：唤醒时画面瞬间出现、不闪屏，\r\n" +
-                            "任何截屏里也看不到遮罩。显示器背光保持点亮，视觉上仍是黑屏。";
+            keepNote.Text = "遮罩始终是全屏纯黑且不关显示器：唤醒画面瞬间出现、不闪屏，任何截屏里都看不到遮罩。";
             Controls.Add(keepNote);
 
             Label pathLabel = new Label();
             pathLabel.Text = "配置文件位置";
-            pathLabel.Location = new Point(18, 244);
+            pathLabel.Location = new Point(18, 296);
             pathLabel.Size = new Size(200, 20);
             pathLabel.Font = uiFont;
             pathLabel.ForeColor = Color.FromArgb(60, 60, 70);
             Controls.Add(pathLabel);
 
             TextBox pathBox = new TextBox();
-            pathBox.Location = new Point(18, 266);
+            pathBox.Location = new Point(18, 318);
             pathBox.Size = new Size(384, 24);
             pathBox.Font = new Font("Consolas", 8.5f, FontStyle.Regular, GraphicsUnit.Point);
             pathBox.ReadOnly = true;
@@ -112,7 +131,7 @@ namespace BlackScreenLock
 
             Button okButton = new Button();
             okButton.Text = "确定";
-            okButton.Location = new Point(216, 302);
+            okButton.Location = new Point(216, 352);
             okButton.Size = new Size(84, 30);
             okButton.Font = uiFont;
             okButton.Click += OnOk;
@@ -120,7 +139,7 @@ namespace BlackScreenLock
 
             Button cancelButton = new Button();
             cancelButton.Text = "取消";
-            cancelButton.Location = new Point(312, 302);
+            cancelButton.Location = new Point(312, 352);
             cancelButton.Size = new Size(84, 30);
             cancelButton.Font = uiFont;
             cancelButton.DialogResult = DialogResult.Cancel;
@@ -128,7 +147,7 @@ namespace BlackScreenLock
 
             Button openFolder = new Button();
             openFolder.Text = "打开所在文件夹";
-            openFolder.Location = new Point(18, 302);
+            openFolder.Location = new Point(18, 352);
             openFolder.Size = new Size(130, 30);
             openFolder.Font = uiFont;
             openFolder.Click += OnOpenFolder;

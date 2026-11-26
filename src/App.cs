@@ -31,6 +31,10 @@ namespace BlackScreenLock
         {
             _config = Config.Load();
 
+            // 崩溃恢复：上次锁屏中调暗了背光但没走到恢复逻辑（进程被杀/崩溃），这里按状态文件还原
+            try { DisplayBrightness.RecoverFromStateFileIfAny(); }
+            catch (Exception ex) { Log.Error("App.背光崩溃恢复", ex); }
+
             // 首次运行：必须先设置解锁密码，之后修改才需要验证原密码
             if (!_config.HasPassword)
             {
@@ -325,6 +329,7 @@ namespace BlackScreenLock
                 bool autoOk = AutoStart.SetEnabled(dialog.AutoStartEnabled);
                 _config.SoundOnError = dialog.SoundOnError;
                 _config.KeepDisplayOff = dialog.KeepDisplayOff;
+                _config.DimBacklight = dialog.DimBacklight;
                 ApplyAlwaysAwake(dialog.AlwaysAwake, false);
                 bool saveOk = _config.Save();
 
@@ -344,7 +349,7 @@ namespace BlackScreenLock
             string text =
                 "黑屏锁 v1.0\r\n\r\n" +
                 "【锁定】按 " + KeyMapper.HotkeyText(_config.HotKeyModifiers, _config.HotKeyVk) + "（可在右键菜单修改）\r\n" +
-                "　　　屏幕立刻黑屏，物理键鼠被临时屏蔽，Windows 会话保持解锁状态。\r\n\r\n" +
+                "　　　屏幕立刻黑屏并把显示器背光调到最低，物理键鼠被临时屏蔽，Windows 会话保持解锁状态。\r\n\r\n" +
                 "【解锁】动一下鼠标或按任意键，屏幕点亮并显示半透明密码框；输入密码后按回车，或点“解锁”。\r\n" +
                 "　　　按 Esc 清空；点“重新黑屏”立刻回到全黑；15 秒无操作会自动回到全黑。\r\n" +
                 "　　　密码只显示圆点；输错会播放提示音（可在选项中关闭）。\r\n\r\n" +

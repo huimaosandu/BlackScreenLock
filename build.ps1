@@ -44,6 +44,7 @@ $ErrorActionPreference = 'Continue'
 $output = & $csc /nologo /target:winexe /platform:anycpu /optimize+ `
     "/out:$outExe" `
     /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll `
+    /r:System.Management.dll `
     $sources 2>&1
 $exitCode = $LASTEXITCODE
 $ErrorActionPreference = 'Stop'

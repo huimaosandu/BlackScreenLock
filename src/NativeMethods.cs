@@ -202,5 +202,43 @@ namespace BlackScreenLock
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, int uFlags);
+
+        // ---------- 显示器亮度（DDC/CI，dxva2）----------
+        public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT rect, IntPtr data);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [DllImport("user32.dll")]
+        public static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clipRect, MonitorEnumProc proc, IntPtr data);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        public struct PHYSICAL_MONITOR
+        {
+            public IntPtr hPhysicalMonitor;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string szPhysicalMonitorDescription;
+        }
+
+        [DllImport("dxva2.dll", SetLastError = true)]
+        public static extern bool GetNumberOfPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, ref uint count);
+
+        [DllImport("dxva2.dll", SetLastError = true)]
+        public static extern bool GetPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, uint count, [Out] PHYSICAL_MONITOR[] monitors);
+
+        [DllImport("dxva2.dll", SetLastError = true)]
+        public static extern bool GetMonitorBrightness(IntPtr handle, ref uint minimum, ref uint current, ref uint maximum);
+
+        [DllImport("dxva2.dll", SetLastError = true)]
+        public static extern bool SetMonitorBrightness(IntPtr handle, uint brightness);
+
+        [DllImport("dxva2.dll", SetLastError = true)]
+        public static extern bool DestroyPhysicalMonitor(IntPtr handle);
     }
 }

@@ -172,6 +172,19 @@ namespace BlackScreenLock
                 Check(log, ref failed, "保持系统唤醒执行状态", false, ex.Message);
             }
 
+            // 5c) 亮度调节支持探测（只读：不改任何亮度，不写状态文件）
+            try
+            {
+                bool dimmed = DisplayBrightness.IsDimmed;
+                string support = DisplayBrightness.ProbeSupport();
+                Check(log, ref failed, "背光亮度通道探测（只读）", true,
+                    (dimmed ? "警告：自检期间检测到调暗状态，" : string.Empty) + support);
+            }
+            catch (Exception ex)
+            {
+                Check(log, ref failed, "背光亮度通道探测（只读）", false, ex.Message);
+            }
+
             // 6) 开机自启动项可读取（不写入）
             try
             {

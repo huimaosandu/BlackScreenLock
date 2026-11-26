@@ -7,7 +7,8 @@ namespace BlackScreenLock
     /// <summary>
     /// 锁屏核心控制器。
     ///
-    /// 锁定状态不做 DPMS 关屏，而是用一个全屏纯黑遮罩代替（视觉上同样是黑屏）。
+    /// 锁定状态不做 DPMS 关屏，而是用一个全屏纯黑遮罩代替，同时把显示器背光调到最低
+    /// （纯黑像素挡不住背光，降背光是软件层最黑的状态；DDC/CI 与 WMI 都不支持时静默跳过）。
     /// 原因：真关屏后唤醒必须点亮显示器，显示器状态切换会让 DWM 重建合成表面，
     /// 遮罩会丢失一瞬（人眼看到桌面闪一下、截屏也会抓到遮罩）。
     /// 纯黑遮罩常亮没有这个问题：磨砂提示界面能瞬间出现，截图始终干净。
@@ -74,6 +75,11 @@ namespace BlackScreenLock
 
             // 只阻止系统睡眠，不动显示器：遮罩本身负责“黑屏”的观感
             DisplayControl.KeepSystemAwake();
+
+            // 遮罩已盖住画面后再降背光，让黑屏更接近全黑（不支持亮度调节的环境会静默跳过）
+            if (_config.DimBacklight)
+                DisplayBrightness.Dim();
+
             StartIdleTimer();
 
             Log.Write("进入锁定状态，钩子=" + (_hook.IsInstalled ? "已安装" : "未安装"));
@@ -86,6 +92,9 @@ namespace BlackScreenLock
             _locked = false;
             _prompting = false;
             _buffer.Length = 0;
+
+            // 无论当前是纯黑还是磨砂形态，都先把背光恢复（未调暗时是空操作）
+            DisplayBrightness.Restore();
 
             StopTimer(ref _idleTimer);
             _hook.Uninstall();
@@ -142,7 +151,9 @@ namespace BlackScreenLock
             if (_prompting) return;
 
             _prompting = true;
+            // 先画磨砂卡片（背光恢复在后台线程进行，不阻塞 UI/钩子线程），用户按键瞬间就能看到反应
             _overlay.EnterPrompt();
+            DisplayBrightness.Restore();
             _overlay.SetDotCount(_buffer.Length);
             // 提示界面里要能点“解锁/重新黑屏”，这一阶段放行物理鼠标
             _hook.SuppressMouse = false;
@@ -155,6 +166,8 @@ namespace BlackScreenLock
             _prompting = false;
             _overlay.EnterIdle();
             _hook.SuppressMouse = true;
+            if (_config.DimBacklight)
+                DisplayBrightness.Dim();
             Log.Write("回到纯黑状态");
         }
 
@@ -288,6 +301,8 @@ namespace BlackScreenLock
                 _hook.Uninstall();
                 _overlay.HideOverlay();
                 _hook.ReleaseStuckInput();
+                // 退出路径没有下次机会，同步收敛确保背光一定恢复
+                DisplayBrightness.RestoreBlocking();
                 DisplayControl.MonitorOn();
                 DisplayControl.ReleaseExecutionState();
             }
