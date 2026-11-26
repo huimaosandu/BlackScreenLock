@@ -30,7 +30,7 @@ namespace BlackScreenLock
         }
 
         private const int CardWidth = 468;
-        private const int CardHeight = 276;
+        private const int CardHeight = 256;
 
         private OverlayMode _mode = OverlayMode.Idle;
         private int _dotCount;
@@ -483,10 +483,6 @@ namespace BlackScreenLock
             }
             TextRenderer.DrawText(g, "重新黑屏", _subFont, dismiss, Color.FromArgb(255, 200, 200, 214),
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
-
-            TextRenderer.DrawText(g, "键盘输入全程由本程序接管，不会打扰后台自动化窗口", _subFont,
-                new Rectangle(left, card.Y + 246, right - left, 20),
-                Color.FromArgb(255, 96, 96, 110), TextFormatFlags.NoPrefix);
         }
 
         private void DrawLockIcon(Graphics g, int x, int y)
